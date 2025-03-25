@@ -1,0 +1,24 @@
+<div class="row">
+    <div class="col-md-12">
+        <h1 class="mt-4 text-white">Welcome to My Website</h1>
+        <p class="lead text-light">This site consists of 3 static views (Home, About, HTML Demo) as well as 5 routes that supply data, including:</p>
+        <ul class="list-group mb-4">
+            <li class="list-group-item"><a href="/students">All Students</a></li>
+            <li class="list-group-item">
+                Students by Course:
+                <ul class="list-group list-group-flush">
+                    <% if (courses && courses.length > 0) { %>
+                        <% courses.forEach(function(course) { %>
+                            <li class="list-group-item"><a href="/students?course=<%= course.courseId %>"><%= course.courseDescription %></a></li>
+                        <% }); %>
+                    <% } %>
+                </ul>
+            </li>
+            <li class="list-group-item"><a href="/student/2">A Single Student By Student Number</a></li>
+            <li class="list-group-item"><a href="/courses">All Courses</a></li>
+            <li class="list-group-item"><a href="/students/add">Add a Student</a></li>
+        </ul>
+        <h2 class="text-white">About HTML5</h2>
+        <p class="text-light">This site utilizes HTML5: a markup language used for structuring and presenting content on the World Wide Web.</p>
+    </div>
+</div>

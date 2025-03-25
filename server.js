@@ -1,12 +1,11 @@
 /*********************************************************************************
-*  WEB700 – Assignment 04
+*  WEB700 – Assignment 05
 *  I declare that this assignment is my own work in accordance with Seneca Academic Policy.
 *  No part of this assignment has been copied manually or electronically from any other source
 *  (including 3rd party web sites) or distributed to other students.
 *
-*  Name: Akshay Nedumparambil Unnikrishnan Student ID: 190635235 Date: 08-03-2025
-*
-*  Vercel link: https://assignment-4-web700-final.vercel.app/
+*  Name: Akshay Nedumparambil Unnikrishnan Student ID: 190635235 Date: March 24, 2025
+*  Online (Vercel) Link: 
 *
 *********************************************************************************/
 
@@ -20,54 +19,130 @@ const app = express();
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
+app.set("view engine", "ejs");
+
+
+app.use(function(req, res, next) {
+    let route = req.path.substring(1);
+    app.locals.activeRoute = "/" + (isNaN(route.split('/')[1]) ? route.replace(/\/(?!.*)/, "") : route.replace(/\/(.*)/, ""));
+    next();
+});
+
+
+const excludedCourseCodes = ["DBD800", "DBW825", "SEC835", "WTP100"];
+
+
 app.get("/", (req, res) => {
-    res.sendFile(path.join(__dirname, "views/home.html"));
+    collegeData.getCourses()
+        .then((courses) => {
+            const filteredCourses = courses.filter(course => !excludedCourseCodes.includes(course.courseCode));
+            res.render("layouts/main", { body: "home", courses: filteredCourses, activeRoute: "/" });
+        })
+        .catch(() => {
+            res.render("layouts/main", { body: "home", courses: [], activeRoute: "/" });
+        });
 });
 
 app.get("/about", (req, res) => {
-    res.sendFile(path.join(__dirname, "views/about.html"));
+    res.render("layouts/main", { body: "about", activeRoute: "/about" });
 });
 
 app.get("/htmlDemo", (req, res) => {
-    res.sendFile(path.join(__dirname, "views/htmlDemo.html"));
+    res.render("layouts/main", { body: "htmlDemo", activeRoute: "/htmlDemo" });
 });
 
 app.get("/students", (req, res) => {
-    if (req.query.course) {
-        collegeData.getStudentsByCourse(req.query.course)
-            .then((students) => res.json(students))
-            .catch(() => res.json({ message: "no results" }));
-    } else {
-        collegeData.getAllStudents()
-            .then((students) => res.json(students))
-            .catch(() => res.json({ message: "no results" }));
-    }
+
+    collegeData.getCourses()
+        .then((courses) => {
+            const filteredCourses = courses.filter(course => !excludedCourseCodes.includes(course.courseCode));
+            if (req.query.course) {
+                collegeData.getStudentsByCourse(req.query.course)
+                    .then((students) => {
+                        res.render("layouts/main", {
+                            body: "students",
+                            students: students,
+                            courses: filteredCourses,
+                            selectedCourse: req.query.course,
+                            activeRoute: "/students"
+                        });
+                    })
+                    .catch(() => {
+                        res.render("layouts/main", {
+                            body: "students",
+                            message: "no results",
+                            courses: filteredCourses,
+                            selectedCourse: req.query.course,
+                            activeRoute: "/students"
+                        });
+                    });
+            } else {
+                collegeData.getAllStudents()
+                    .then((students) => {
+                        res.render("layouts/main", {
+                            body: "students",
+                            students: students,
+                            courses: filteredCourses,
+                            selectedCourse: null,
+                            activeRoute: "/students"
+                        });
+                    })
+                    .catch(() => {
+                        res.render("layouts/main", {
+                            body: "students",
+                            message: "no results",
+                            courses: filteredCourses,
+                            selectedCourse: null,
+                            activeRoute: "/students"
+                        });
+                    });
+            }
+        })
+        .catch(() => {
+            res.render("layouts/main", {
+                body: "students",
+                message: "Unable to load courses",
+                courses: [],
+                selectedCourse: null,
+                activeRoute: "/students"
+            });
+        });
 });
 
 app.get("/student/:num", (req, res) => {
     collegeData.getStudentByNum(req.params.num)
-        .then((student) => res.json(student))
-        .catch(() => res.json({ message: "no results" }));
-});
-
-app.get("/tas", (req, res) => {
-    collegeData.getTAs()
-        .then((tas) => res.json(tas))
-        .catch(() => res.json({ message: "no results" }));
+        .then((student) => res.render("layouts/main", { body: "student", student: student, activeRoute: "/student" }))
+        .catch(() => res.status(404).send("Student Not Found"));
 });
 
 app.get("/courses", (req, res) => {
     collegeData.getCourses()
-        .then((courses) => res.json(courses))
-        .catch(() => res.json({ message: "no results" }));
+        .then((courses) => {
+
+            const filteredCourses = courses.filter(course => !excludedCourseCodes.includes(course.courseCode));
+            res.render("layouts/main", { body: "courses", courses: filteredCourses, activeRoute: "/courses" });
+        })
+        .catch(() => res.render("layouts/main", { body: "courses", message: "no results", activeRoute: "/courses" }));
+});
+
+app.get("/course/:id", (req, res) => {
+    collegeData.getCourseById(req.params.id)
+        .then((data) => res.render("layouts/main", { body: "course", course: data, activeRoute: "/course" }))
+        .catch((err) => res.status(404).send(err));
 });
 
 app.get("/students/add", (req, res) => {
-    res.sendFile(path.join(__dirname, "views/addStudent.html"));
+    res.render("layouts/main", { body: "addStudent", activeRoute: "/students/add" });
 });
 
 app.post("/students/add", (req, res) => {
     collegeData.addStudent(req.body)
+        .then(() => res.redirect("/students"))
+        .catch(err => res.json({ error: err }));
+});
+
+app.post("/student/update", (req, res) => {
+    collegeData.updateStudent(req.body)
         .then(() => res.redirect("/students"))
         .catch(err => res.json({ error: err }));
 });
